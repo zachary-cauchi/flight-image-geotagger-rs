@@ -4,13 +4,13 @@ use serde_json::Value;
 
 use crate::parsers::json_parser::{FlightRadar24JsonParser, JsonParser};
 
-use super::GeodataProvider;
+use super::FlightDataProvider;
 
-pub struct GeodataFileProvider {
+pub struct FlightDataFileProvider {
     src_path: PathBuf,
 }
 
-impl GeodataProvider for GeodataFileProvider {
+impl FlightDataProvider for FlightDataFileProvider {
     fn load_data(
         &self,
     ) -> crate::models::result::GTResult<crate::models::flight_geodata::FlightGeodata> {
@@ -23,7 +23,7 @@ impl GeodataProvider for GeodataFileProvider {
     }
 }
 
-impl GeodataFileProvider {
+impl FlightDataFileProvider {
     pub fn new(src_path: PathBuf) -> Self {
         Self { src_path }
     }

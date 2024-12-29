@@ -18,10 +18,7 @@ impl JsonParser for FlightRadar24JsonParser {
 
         let positions = self.get_geopositions(&src).ok_or(GTError::Parser)?;
 
-        Ok(FlightGeodata {
-            flight_code,
-            positions,
-        })
+        Ok(FlightGeodata::new(flight_code, positions))
     }
 }
 
