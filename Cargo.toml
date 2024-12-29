@@ -1,0 +1,8 @@
+[package]
+name = "flight-image-geotagger-rs"
+description = "Geotag images taken on a commercial flight."
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1.0.217"
