@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
+use exif::{Field, In, Rational, Tag, Value};
 
 use super::result::{GTError, GTResult};
 
@@ -9,14 +10,15 @@ pub struct GeoPosition {
     pub timestamp: DateTime<Utc>,
     pub latitude: f64,
     pub longitude: f64,
+    pub altitude: i64,
 }
 
 impl Display for GeoPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "(timestamp: {}, Lat: {}, Lon: {})",
-            self.timestamp, self.latitude, self.longitude
+            "(timestamp: {}, Lat: {}, Lon: {}, Altitude: {}m)",
+            self.timestamp, self.latitude, self.longitude, self.altitude
         )
     }
 }
@@ -82,6 +84,9 @@ impl FlightGeodata {
                 + linear_factor * (higher_position.latitude - lower_position.latitude),
             longitude: lower_position.longitude
                 + linear_factor * (higher_position.longitude - lower_position.longitude),
+            altitude: (lower_position.altitude as f64
+                + linear_factor * (higher_position.altitude - lower_position.altitude) as f64)
+                as i64,
         };
 
         println!(
@@ -90,6 +95,44 @@ impl FlightGeodata {
         );
 
         Ok(interpolated_position)
+    }
+
+    pub fn get_gps_exif_from_datetime(&self, timestamp: DateTime<Utc>) -> GTResult<[Field; 4]> {
+        let position = self.get_position_from_datetime(timestamp)?;
+
+        let lat_ref = if position.latitude >= 0.0 { b"N" } else { b"S" };
+        let lat_ref = Field {
+            tag: Tag::GPSLatitudeRef,
+            ifd_num: In::PRIMARY,
+            value: Value::Ascii(vec![lat_ref.to_vec()]),
+        };
+
+        let lon_ref = if position.longitude >= 0.0 {
+            b"E"
+        } else {
+            b"W"
+        };
+        let lon_ref = Field {
+            tag: Tag::GPSLongitudeRef,
+            ifd_num: In::PRIMARY,
+            value: Value::Ascii(vec![lon_ref.to_vec()]),
+        };
+
+        let alt_ref = if position.altitude >= 0 { 0 } else { 1 };
+        let alt_ref = Field {
+            tag: Tag::GPSAltitudeRef,
+            ifd_num: In::PRIMARY,
+            value: Value::Byte(vec![alt_ref]),
+        };
+
+        let alt = Rational::from((u32::try_from(position.altitude.abs())?, 1));
+        let alt = Field {
+            tag: Tag::GPSAltitude,
+            ifd_num: In::PRIMARY,
+            value: Value::Rational(vec![alt]),
+        };
+
+        Ok([lat_ref, lon_ref, alt_ref, alt])
     }
 }
 

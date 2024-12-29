@@ -60,6 +60,20 @@ impl ImageGeotagger {
 
         let image_position = self.flight_data.get_position_from_datetime(timestamp)?;
 
+        for field in exif.fields() {
+            // println!(
+            //     "Tag: {}, IFD: {}, Value: {}",
+            //     field.tag,
+            //     field.ifd_num,
+            //     field.display_value().with_unit(&exif)
+            // )
+            println!("{}: {field:?}", field.tag)
+        }
+
+        // let mut buffer = std::io::Cursor::new(Vec::new());
+        // let mut writer = exif::experimental::Writer::new();
+        // writer.write(&mut buffer, false)?;
+
         Ok(())
     }
 }

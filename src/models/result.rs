@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, num::TryFromIntError};
 
 pub type GTResult<T> = Result<T, GTError>;
 
@@ -10,6 +10,13 @@ pub enum GTError {
     Serde(String),
     Args(String),
     Exif(exif::Error),
+    Conversion(String),
+}
+
+impl From<TryFromIntError> for GTError {
+    fn from(value: TryFromIntError) -> Self {
+        Self::Conversion(value.to_string())
+    }
 }
 
 impl From<exif::Error> for GTError {
@@ -40,6 +47,7 @@ impl Display for GTError {
             Self::Serde(e) => write!(f, "Serde error: {e}"),
             Self::Args(e) => write!(f, "CLI args config error: {e}"),
             Self::Exif(e) => write!(f, "Exif-related error: {e}"),
+            Self::Conversion(e) => write!(f, "Data conversion error: {e}"),
         }
     }
 }

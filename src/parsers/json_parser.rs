@@ -46,6 +46,7 @@ impl FlightRadar24JsonParser {
             timestamp: DateTime::from_timestamp(src.get("timestamp")?.as_i64()?, 0)?,
             latitude: src.get("latitude")?.as_f64()?,
             longitude: src.get("longitude")?.as_f64()?,
+            altitude: src.pointer("/altitude/meters")?.as_i64()?,
         })
     }
 }
