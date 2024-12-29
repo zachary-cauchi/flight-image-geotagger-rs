@@ -1,11 +1,12 @@
+mod data_providers;
 mod models;
 mod parsers;
 
 use std::{fmt::Display, path::PathBuf, process::exit};
 
 use clap::{Args, Parser, ValueEnum};
-use models::result::GTResult;
-use parsers::json_parser::{FlightRadar24JsonParser, JsonParser};
+use data_providers::{json_provider::GeodataFileProvider, GeodataProvider};
+use models::result::{GTError, GTResult};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum FlightDataSrc {
@@ -40,6 +41,16 @@ struct TagArgs {
     images_dir: PathBuf,
 }
 
+impl TagArgs {
+    pub fn try_get_provider(&self) -> GTResult<impl GeodataProvider> {
+        if let Some(ref path) = self.json_file {
+            Ok(GeodataFileProvider::new(path.clone()))
+        } else {
+            GTResult::Err(GTError::Args("Invalid configuration.".to_string()))
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "airmode-tagger")]
 #[command(bin_name = "airmode-tagger")]
@@ -60,16 +71,9 @@ fn main() {
 }
 
 fn run(args: TagArgs) -> GTResult<()> {
-    if let Some(json_path) = args.json_file {
-        println!("Loading geodata from JSON file...");
+    let provider = args.try_get_provider()?;
+    let flight_data = provider.load_data()?;
 
-        let reader = std::io::BufReader::new(std::fs::File::open(json_path)?);
-        let json: serde_json::Value = serde_json::from_reader(reader)?;
-        let parser = FlightRadar24JsonParser {};
-        let geopositions = parser.try_parse_geodata(json)?;
-
-        println!("{geopositions:#?}")
-    }
-
+    println!("{flight_data}");
     Ok(())
 }

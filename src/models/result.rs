@@ -6,6 +6,7 @@ pub enum GTError {
     Parser,
     Io(std::io::Error),
     Serde(String),
+    Args(String),
 }
 
 impl From<std::io::Error> for GTError {
@@ -26,6 +27,7 @@ impl Display for GTError {
             Self::Parser => write!(f, "JSON Parser error."),
             Self::Io(e) => write!(f, "IO parser error: {e}"),
             Self::Serde(e) => write!(f, "Serde error: {e}"),
+            Self::Args(e) => write!(f, "CLI args config error: {e}"),
         }
     }
 }
