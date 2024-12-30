@@ -2,9 +2,12 @@ use chrono::{DateTime, NaiveDateTime, NaiveTime, Utc};
 use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 
-use crate::models::{
-    flight_geodata::FlightGeodata,
-    result::{GTError, GTResult},
+use crate::{
+    models::{
+        flight_geodata::FlightGeodata,
+        result::{GTError, GTResult},
+    },
+    parsers::json_parser::{FlightRadar24JsonParser, JsonParser},
 };
 
 use super::FlightDataProvider;
@@ -16,6 +19,7 @@ pub struct FlightRadar24ApiProvider {
 
 impl FlightRadar24ApiProvider {
     const WEBSITE_URL: &'static str = "https://www.flightradar24.com";
+    const API_URL: &'static str = "https://api.flightradar24.com/common/v1";
 
     const FLIGHTS_TABLE_SELECTOR: &'static str = "#tbl-datatable tbody";
 
@@ -30,7 +34,7 @@ impl FlightRadar24ApiProvider {
         Self { flight_code, dod }
     }
 
-    fn get_flight_id(&self, client: &Client) -> GTResult<String> {
+    fn get_data_link(&self, client: &Client) -> GTResult<String> {
         let flights_response = client
             .get(format!(
                 "{}/data/flights/{}",
@@ -75,11 +79,34 @@ impl FlightRadar24ApiProvider {
             ));
         };
 
-        return Ok(hex.to_string());
+        let Some(data_timestamp) = playback_btn.attr("data-timestamp") else {
+            return Err(GTError::HtmlSelection(
+                "No data-timestamp found in expected location.".to_string(),
+            ));
+        };
+
+        let url = format!(
+            "{}/flight-playback.json?flightId={}&timestamp={}",
+            Self::API_URL,
+            hex,
+            data_timestamp
+        );
+
+        return Ok(url);
     }
 
-    fn download_flight_data(&self, client: &Client, flight_id: String) -> GTResult<()> {
-        Ok(())
+    fn download_flight_data(
+        &self,
+        client: &Client,
+        flight_data_url: String,
+    ) -> GTResult<FlightGeodata> {
+        let response = client.get(flight_data_url).send()?.error_for_status()?;
+        let parsed_json: serde_json::Value = serde_json::from_str(response.text()?.as_str())?;
+
+        let parser = FlightRadar24JsonParser {};
+        let flight_data = parser.try_parse_geodata(parsed_json)?;
+
+        Ok(flight_data)
     }
 }
 
@@ -97,12 +124,12 @@ impl FlightDataProvider for FlightRadar24ApiProvider {
 
         println!("Getting flight Id.");
 
-        let flight_id_hex = self.get_flight_id(&client)?;
+        let flight_data_url = self.get_data_link(&client)?;
 
-        println!("Found Id: {flight_id_hex}, downloading flight data.");
+        println!("Obtained url. Downloading data from '{flight_data_url}'.");
 
-        let data = self.download_flight_data(&client, flight_id_hex)?;
+        let data = self.download_flight_data(&client, flight_data_url)?;
 
-        Ok(FlightGeodata::new(self.flight_code.clone(), vec![]))
+        Ok(data)
     }
 }

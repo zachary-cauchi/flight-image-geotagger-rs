@@ -94,7 +94,7 @@ fn run(args: TagArgs) -> GTResult<()> {
     let provider = args.try_get_provider()?;
     let flight_data = provider.load_data()?;
 
-    return Ok(());
+    println!("Obtained data: {flight_data}");
 
     let output_dir = args.images_dir.join("geotagged");
     let mapper = ImageGeotagger::new(output_dir, flight_data);

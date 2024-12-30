@@ -129,10 +129,6 @@ impl ImageGeotagger {
 
         let timestamp = self.get_image_timestamp(&exif)?;
 
-        for field in exif.fields() {
-            println!("Tag: {}, Value: {field:?}", field.tag);
-        }
-
         println!("Done.\nGetting new GPS metadata.");
         let new_fields = self.flight_data.get_gps_exif_from_datetime(timestamp)?;
 
