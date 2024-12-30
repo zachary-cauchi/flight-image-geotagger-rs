@@ -76,13 +76,14 @@ fn run(args: TagArgs) -> GTResult<()> {
     let provider = args.try_get_provider()?;
     let flight_data = provider.load_data()?;
 
-    let mapper = ImageGeotagger::new(flight_data);
+    let output_dir = args.images_dir.join("geotagged");
+    let mapper = ImageGeotagger::new(output_dir, flight_data);
 
     for entry_res in std::fs::read_dir(args.images_dir)? {
         let entry = entry_res?;
         let path = entry.path();
 
-        if !path.exists() || !path.is_file() {
+        if !path.exists() {
             println!(
                 "Entry does not exist or is not file. Skipping {}",
                 path.display()
@@ -90,8 +91,19 @@ fn run(args: TagArgs) -> GTResult<()> {
             continue;
         }
 
-        mapper.apply_gps_data(&path)?;
+        if path.is_dir() {
+            continue;
+        }
+
+        if let Err(e) = mapper.apply_gps_data(&path) {
+            println!(
+                "Error processing image {}: {e}",
+                path.file_name().unwrap().to_str().unwrap()
+            );
+        }
     }
+
+    println!("All done.");
 
     Ok(())
 }

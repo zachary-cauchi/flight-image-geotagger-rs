@@ -139,7 +139,7 @@ impl FlightGeodata {
         let alt_ref = Field {
             tag: Tag::GPSAltitudeRef,
             ifd_num: In::PRIMARY,
-            value: Value::Byte(vec![alt_ref]),
+            value: Value::Short(vec![alt_ref]),
         };
 
         let alt = Rational::from((u32::try_from(position.altitude.abs())?, 1));

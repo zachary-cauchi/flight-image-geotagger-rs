@@ -10,7 +10,14 @@ pub enum GTError {
     Serde(String),
     Args(String),
     Exif(exif::Error),
+    ImgHandling(img_parts::Error),
     Conversion(String),
+}
+
+impl From<img_parts::Error> for GTError {
+    fn from(value: img_parts::Error) -> Self {
+        Self::ImgHandling(value)
+    }
 }
 
 impl From<TryFromIntError> for GTError {
@@ -43,6 +50,7 @@ impl Display for GTError {
             Self::Parser => write!(f, "JSON Parser error."),
             Self::MissingData(e) => write!(f, "Missing data error: {e}"),
             Self::InvalidData(e) => write!(f, "Invalid data error: {e}"),
+            Self::ImgHandling(e) => write!(f, "Image-handling error: {e}"),
             Self::Io(e) => write!(f, "IO parser error: {e}"),
             Self::Serde(e) => write!(f, "Serde error: {e}"),
             Self::Args(e) => write!(f, "CLI args config error: {e}"),
