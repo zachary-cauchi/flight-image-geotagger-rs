@@ -1,82 +1,15 @@
+mod cli;
 mod data_providers;
 mod image_geotagger;
 mod models;
 mod parsers;
 
-use std::{fmt::Display, path::PathBuf, process::exit};
+use std::process::exit;
 
-use chrono::{DateTime, Utc};
-use clap::{Args, Parser, ValueEnum};
-use data_providers::{
-    flightradar24_provider::FlightRadar24ApiProvider, json_provider::FlightDataFileProvider,
-    FlightDataProvider,
-};
+use clap::Parser;
+use cli::{Cli, TagArgs};
 use image_geotagger::ImageGeotagger;
-use models::result::{GTError, GTResult};
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum FlightDataSrc {
-    Json,
-    Api,
-}
-
-impl Display for FlightDataSrc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let text = match self {
-            Self::Json => "json",
-            Self::Api => "api",
-        };
-        f.write_str(text)
-    }
-}
-
-#[derive(Args)]
-#[command(version, about)]
-struct TagArgs {
-    /// The flight code of the flight on which the images were taken.
-    #[arg(long)]
-    flight_code: String,
-
-    /// Which source to use for flight geodata.
-    #[arg(short, long, name = "src", default_value_t = FlightDataSrc::Json)]
-    flight_data_src: FlightDataSrc,
-
-    /// Date of flight departure.
-    #[arg(short, long, name = "dod", default_value_t = Utc::now())]
-    date_of_departure: DateTime<Utc>,
-
-    /// File path to flight geodata json file.
-    #[arg(short, long)]
-    json_file: Option<PathBuf>,
-
-    /// Path to directory containing all images to geotag.
-    images_dir: PathBuf,
-}
-
-impl TagArgs {
-    pub fn try_get_provider(&self) -> GTResult<Box<dyn FlightDataProvider>> {
-        match self.flight_data_src {
-            FlightDataSrc::Json => {
-                if let Some(ref path) = self.json_file {
-                    Ok(Box::new(FlightDataFileProvider::new(path.clone())))
-                } else {
-                    GTResult::Err(GTError::Args("Invalid configuration.".to_string()))
-                }
-            }
-            FlightDataSrc::Api => Ok(Box::new(FlightRadar24ApiProvider::new(
-                self.flight_code.clone(),
-                self.date_of_departure,
-            ))),
-        }
-    }
-}
-
-#[derive(Parser)]
-#[command(name = "airmode-tagger")]
-#[command(bin_name = "airmode-tagger")]
-enum Cli {
-    Tag(TagArgs),
-}
+use models::result::GTResult;
 
 fn main() {
     let Cli::Tag(tag) = Cli::parse();
