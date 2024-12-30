@@ -5,20 +5,26 @@ mod parsers;
 
 use std::{fmt::Display, path::PathBuf, process::exit};
 
+use chrono::{DateTime, Utc};
 use clap::{Args, Parser, ValueEnum};
-use data_providers::{json_provider::FlightDataFileProvider, FlightDataProvider};
+use data_providers::{
+    flightradar24_provider::FlightRadar24ApiProvider, json_provider::FlightDataFileProvider,
+    FlightDataProvider,
+};
 use image_geotagger::ImageGeotagger;
 use models::result::{GTError, GTResult};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum FlightDataSrc {
     Json,
+    Api,
 }
 
 impl Display for FlightDataSrc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
             Self::Json => "json",
+            Self::Api => "api",
         };
         f.write_str(text)
     }
@@ -32,8 +38,12 @@ struct TagArgs {
     flight_code: String,
 
     /// Which source to use for flight geodata.
-    #[arg(short, default_value_t = FlightDataSrc::Json)]
+    #[arg(short, long, name = "src", default_value_t = FlightDataSrc::Json)]
     flight_data_src: FlightDataSrc,
+
+    /// Date of flight departure.
+    #[arg(short, long, name = "dod", default_value_t = Utc::now())]
+    date_of_departure: DateTime<Utc>,
 
     /// File path to flight geodata json file.
     #[arg(short, long)]
@@ -44,11 +54,19 @@ struct TagArgs {
 }
 
 impl TagArgs {
-    pub fn try_get_provider(&self) -> GTResult<impl FlightDataProvider> {
-        if let Some(ref path) = self.json_file {
-            Ok(FlightDataFileProvider::new(path.clone()))
-        } else {
-            GTResult::Err(GTError::Args("Invalid configuration.".to_string()))
+    pub fn try_get_provider(&self) -> GTResult<Box<dyn FlightDataProvider>> {
+        match self.flight_data_src {
+            FlightDataSrc::Json => {
+                if let Some(ref path) = self.json_file {
+                    Ok(Box::new(FlightDataFileProvider::new(path.clone())))
+                } else {
+                    GTResult::Err(GTError::Args("Invalid configuration.".to_string()))
+                }
+            }
+            FlightDataSrc::Api => Ok(Box::new(FlightRadar24ApiProvider::new(
+                self.flight_code.clone(),
+                self.date_of_departure,
+            ))),
         }
     }
 }
@@ -75,6 +93,8 @@ fn main() {
 fn run(args: TagArgs) -> GTResult<()> {
     let provider = args.try_get_provider()?;
     let flight_data = provider.load_data()?;
+
+    return Ok(());
 
     let output_dir = args.images_dir.join("geotagged");
     let mapper = ImageGeotagger::new(output_dir, flight_data);

@@ -104,7 +104,11 @@ impl ImageGeotagger {
     }
 
     fn save_new_image(&self, image_path: &Path, jpeg: Jpeg) -> GTResult<()> {
-        let output_path = self.output_dir.join(image_path.file_name().unwrap());
+        let output_path = self.output_dir.join(
+            image_path
+                .file_name()
+                .expect("Filename should already be present."),
+        );
 
         println!("\nSaving image to {}", output_path.display());
 

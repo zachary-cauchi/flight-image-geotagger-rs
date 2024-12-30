@@ -1,5 +1,7 @@
 use std::{fmt::Display, num::TryFromIntError};
 
+use scraper::error::SelectorErrorKind;
+
 pub type GTResult<T> = Result<T, GTError>;
 
 pub enum GTError {
@@ -9,9 +11,29 @@ pub enum GTError {
     Io(std::io::Error),
     Serde(String),
     Args(String),
+    HtmlSelection(String),
+    Reqwest(reqwest::Error),
     Exif(exif::Error),
     ImgHandling(img_parts::Error),
     Conversion(String),
+}
+
+impl From<SelectorErrorKind<'_>> for GTError {
+    fn from(value: SelectorErrorKind) -> Self {
+        Self::HtmlSelection(value.to_string())
+    }
+}
+
+impl From<reqwest::header::InvalidHeaderValue> for GTError {
+    fn from(value: reqwest::header::InvalidHeaderValue) -> Self {
+        Self::InvalidData(format!("Invalid reqwest header value: {value}"))
+    }
+}
+
+impl From<reqwest::Error> for GTError {
+    fn from(value: reqwest::Error) -> Self {
+        Self::Reqwest(value)
+    }
 }
 
 impl From<img_parts::Error> for GTError {
@@ -49,6 +71,8 @@ impl Display for GTError {
         match self {
             Self::Parser => write!(f, "JSON Parser error."),
             Self::MissingData(e) => write!(f, "Missing data error: {e}"),
+            Self::Reqwest(e) => write!(f, "HTTP client error: {e}"),
+            Self::HtmlSelection(e) => write!(f, "HTML selection error: {e}"),
             Self::InvalidData(e) => write!(f, "Invalid data error: {e}"),
             Self::ImgHandling(e) => write!(f, "Image-handling error: {e}"),
             Self::Io(e) => write!(f, "IO parser error: {e}"),
