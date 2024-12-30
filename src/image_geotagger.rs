@@ -70,6 +70,8 @@ impl ImageGeotagger {
             println!("{}: {field:?}", field.tag)
         }
 
+        let new_fields = self.flight_data.get_gps_exif_from_datetime(timestamp)?;
+        println!("New fields: {new_fields:#?}");
         // let mut buffer = std::io::Cursor::new(Vec::new());
         // let mut writer = exif::experimental::Writer::new();
         // writer.write(&mut buffer, false)?;

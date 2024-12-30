@@ -3,7 +3,10 @@ use std::fmt::Display;
 use chrono::{DateTime, Utc};
 use exif::{Field, In, Rational, Tag, Value};
 
-use super::result::{GTError, GTResult};
+use super::{
+    coord::Converter,
+    result::{GTError, GTResult},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct GeoPosition {
@@ -97,7 +100,7 @@ impl FlightGeodata {
         Ok(interpolated_position)
     }
 
-    pub fn get_gps_exif_from_datetime(&self, timestamp: DateTime<Utc>) -> GTResult<[Field; 4]> {
+    pub fn get_gps_exif_from_datetime(&self, timestamp: DateTime<Utc>) -> GTResult<[Field; 6]> {
         let position = self.get_position_from_datetime(timestamp)?;
 
         let lat_ref = if position.latitude >= 0.0 { b"N" } else { b"S" };
@@ -105,6 +108,13 @@ impl FlightGeodata {
             tag: Tag::GPSLatitudeRef,
             ifd_num: In::PRIMARY,
             value: Value::Ascii(vec![lat_ref.to_vec()]),
+        };
+
+        let lat = Converter::try_coord_to_exif_value(position.latitude)?;
+        let lat = Field {
+            tag: Tag::GPSLatitude,
+            ifd_num: In::PRIMARY,
+            value: lat,
         };
 
         let lon_ref = if position.longitude >= 0.0 {
@@ -116,6 +126,13 @@ impl FlightGeodata {
             tag: Tag::GPSLongitudeRef,
             ifd_num: In::PRIMARY,
             value: Value::Ascii(vec![lon_ref.to_vec()]),
+        };
+
+        let lon = Converter::try_coord_to_exif_value(position.longitude)?;
+        let lon = Field {
+            tag: Tag::GPSLongitude,
+            ifd_num: In::PRIMARY,
+            value: lon,
         };
 
         let alt_ref = if position.altitude >= 0 { 0 } else { 1 };
@@ -132,7 +149,7 @@ impl FlightGeodata {
             value: Value::Rational(vec![alt]),
         };
 
-        Ok([lat_ref, lon_ref, alt_ref, alt])
+        Ok([lat_ref, lat, lon_ref, lon, alt_ref, alt])
     }
 }
 
